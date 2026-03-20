@@ -1,4 +1,21 @@
-README.md (completo y profesional)
+README.md 
+```
+C:\xampp\htdocs\loginfinal\
+├── css\
+│   └── style.css
+├── includes\
+│   ├── bd.php
+│   ├── funciones.php
+│   └── flash.php
+├── public\
+│   ├── index.php
+│   ├── login.php
+│   ├── registro.php
+│   ├── dashboard.php
+│   └── logout.php
+├── .env          (opcional)
+└── .htaccess     (opcional)
+```
 Markdown# Sistema de Autenticación PHP + MySQL (Profesional 2026)
 
 Proyecto completo de login/registro con mejores prácticas modernas.
