@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Review — Sistema Auth PHP</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0c10;
+    --surface: #12141a;
+    --surface2: #1a1d26;
+    --border: #252836;
+    --accent: #f5a623;
+    --accent2: #e84040;
+    --accent3: #3ecf8e;
+    --accent4: #5b8dee;
+    --text: #e8eaf0;
+    --muted: #7a7f94;
+    --code-bg: #0d0f15;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 2.5rem 3rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-badge {
+    background: var(--accent);
+    color: #000;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    padding: 0.3rem 0.7rem;
+    border-radius: 3px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    margin-top: 0.4rem;
+  }
+  .header-text h1 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em; }
+  .header-text p { color: var(--muted); font-size: 0.85rem; font-family: 'Space Mono', monospace; margin-top: 0.2rem; }
+
+  /* LAYOUT */
+  .layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+  nav {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 2rem 0;
+    position: sticky;
+    top: 80px;
+    height: calc(100vh - 80px);
+    overflow-y: auto;
+  }
+  nav a {
+    display: block;
+    padding: 0.55rem 1.5rem;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    border-left: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  nav a:hover, nav a.active { color: var(--text); border-left-color: var(--accent); background: var(--surface2); }
+  nav .nav-section {
+    padding: 1.2rem 1.5rem 0.4rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  main { padding: 2.5rem 3rem; max-width: 900px; }
+
+  /* SECTIONS */
+  section { margin-bottom: 4rem; }
+  .section-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .section-icon {
+    width: 32px; height: 32px;
+    border-radius: 6px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+  }
+
+  /* SCORE CARDS */
+  .score-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .score-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1rem;
+    text-align: center;
+  }
+  .score-card .score-val {
+    font-size: 2.4rem;
+    font-weight: 800;
+    font-family: 'Space Mono', monospace;
+    line-height: 1;
+    margin-bottom: 0.3rem;
+  }
+  .score-card .score-label { font-size: 0.72rem; color: var(--muted); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+  .score-card .score-bar {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    margin-top: 0.75rem;
+    overflow: hidden;
+  }
+  .score-card .score-fill { height: 100%; border-radius: 2px; }
+  .c-red   { color: var(--accent2); }
+  .c-orange { color: var(--accent); }
+  .c-green { color: var(--accent3); }
+  .c-blue  { color: var(--accent4); }
+  .bg-red   { background: var(--accent2); }
+  .bg-orange { background: var(--accent); }
+  .bg-green { background: var(--accent3); }
+  .bg-blue  { background: var(--accent4); }
+
+  /* FINDING CARDS */
+  .finding {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+  }
+  .finding-header {
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  .finding-header:hover { background: var(--surface2); }
+  .severity {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    margin-top: 0.1rem;
+  }
+  .sev-critical { background: rgba(232,64,64,0.15); color: var(--accent2); border: 1px solid rgba(232,64,64,0.3); }
+  .sev-high     { background: rgba(245,166,35,0.12); color: var(--accent); border: 1px solid rgba(245,166,35,0.3); }
+  .sev-medium   { background: rgba(91,141,238,0.12); color: var(--accent4); border: 1px solid rgba(91,141,238,0.3); }
+  .sev-low      { background: rgba(62,207,142,0.12); color: var(--accent3); border: 1px solid rgba(62,207,142,0.3); }
+  .sev-info     { background: rgba(122,127,148,0.12); color: var(--muted); border: 1px solid rgba(122,127,148,0.3); }
+
+  .finding-title { font-weight: 700; font-size: 0.95rem; flex: 1; }
+  .finding-file  { font-family: 'Space Mono', monospace; font-size: 0.72rem; color: var(--muted); margin-top: 0.2rem; }
+  .finding-toggle { color: var(--muted); font-size: 1.2rem; margin-left: auto; transition: transform 0.2s; }
+  .finding.open .finding-toggle { transform: rotate(180deg); }
+
+  .finding-body { display: none; padding: 1rem 1.25rem 1.25rem; border-top: 1px solid var(--border); }
+  .finding.open .finding-body { display: block; }
+  .finding-body p { color: #bcc0d0; font-size: 0.9rem; margin-bottom: 0.75rem; }
+  .finding-body strong { color: var(--text); }
+
+  /* CODE BLOCKS */
+  .code-block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 0.75rem 0;
+  }
+  .code-label {
+    padding: 0.4rem 1rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+  .code-label.bad  { color: var(--accent2); }
+  .code-label.good { color: var(--accent3); }
+  pre {
+    padding: 1rem 1.25rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre;
+    color: #c9d1e0;
+  }
+  .hl-red    { color: #f07070; }
+  .hl-green  { color: #7edfa8; }
+  .hl-orange { color: #f5a623; }
+  .hl-blue   { color: #82aaff; }
+  .hl-purple { color: #c792ea; }
+  .hl-muted  { color: #6a7191; }
+
+  /* FIX TAG */
+  .fix-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(62,207,142,0.1);
+    color: var(--accent3);
+    border: 1px solid rgba(62,207,142,0.25);
+    border-radius: 4px;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-top: 0.5rem;
+  }
+
+  /* METRIC TABLE */
+  .metric-table { width: 100%; border-collapse: collapse; }
+  .metric-table th {
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .metric-table td {
+    padding: 0.75rem 1rem;
+    font-size: 0.88rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .metric-table tr:last-child td { border-bottom: none; }
+  .metric-table .mono { font-family: 'Space Mono', monospace; font-size: 0.8rem; }
+  .pill {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+  .pill-green { background: rgba(62,207,142,0.15); color: var(--accent3); }
+  .pill-orange { background: rgba(245,166,35,0.12); color: var(--accent); }
+  .pill-red { background: rgba(232,64,64,0.12); color: var(--accent2); }
+
+  /* ADR CARDS */
+  .adr-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent4);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+  .adr-card.accepted { border-left-color: var(--accent3); }
+  .adr-card.proposed { border-left-color: var(--accent); }
+  .adr-card.deprecated { border-left-color: var(--muted); }
+  .adr-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+  .adr-id { font-family: 'Space Mono', monospace; font-size: 0.72rem; color: var(--muted); }
+  .adr-title { font-weight: 800; font-size: 1rem; flex: 1; }
+  .adr-status { font-family: 'Space Mono', monospace; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em; padding: 0.2rem 0.55rem; border-radius: 4px; text-transform: uppercase; }
+  .status-accepted { background: rgba(62,207,142,0.12); color: var(--accent3); }
+  .status-proposed { background: rgba(245,166,35,0.12); color: var(--accent); }
+  .status-deprecated { background: rgba(122,127,148,0.12); color: var(--muted); }
+  .adr-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1.5rem; font-size: 0.85rem; margin-bottom: 0.75rem; }
+  .adr-meta strong { color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; display: block; }
+  .adr-body p { color: #bcc0d0; font-size: 0.88rem; margin-bottom: 0.5rem; }
+  .adr-body ul { color: #bcc0d0; font-size: 0.88rem; padding-left: 1.2rem; }
+  .adr-body ul li { margin-bottom: 0.3rem; }
+  .adr-divider { border: none; border-top: 1px solid var(--border); margin: 0.75rem 0; }
+
+  /* SUMMARY BOX */
+  .summary-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .summary-box p { color: #bcc0d0; font-size: 0.9rem; margin-bottom: 0.5rem; }
+
+  /* FEEDBACK ITEMS */
+  .fb-item {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 0.75rem;
+  }
+  .fb-icon { font-size: 1.4rem; line-height: 1; margin-top: 0.1rem; }
+  .fb-content h4 { font-weight: 700; font-size: 0.92rem; margin-bottom: 0.25rem; }
+  .fb-content p  { color: #bcc0d0; font-size: 0.87rem; }
+
+  /* RADAR */
+  .radar-wrap { display: flex; gap: 2rem; align-items: center; margin: 1.5rem 0; }
+  svg.radar { flex-shrink: 0; }
+
+  @media (max-width: 768px) {
+    .layout { grid-template-columns: 1fr; }
+    nav { display: none; }
+    main { padding: 1.5rem; }
+    header { padding: 1.5rem; }
+    .score-grid { grid-template-columns: repeat(2, 1fr); }
+    .radar-wrap { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-badge">Code Review</div>
+  <div class="header-text">
+    <h1>Sistema Auth PHP + MySQL</h1>
+    <p>schema.zip · PHP 8.3 · 9 archivos · 20 Mar 2026 · Enfoque: Seguridad, Mantenibilidad, Arquitectura</p>
+  </div>
+</header>
+
+<div class="layout">
+  <nav>
+    <div class="nav-section">Análisis</div>
+    <a href="#resumen">Resumen Ejecutivo</a>
+    <a href="#metricas">Métricas de Calidad</a>
+    <div class="nav-section">Hallazgos</div>
+    <a href="#seguridad">🔴 Seguridad</a>
+    <a href="#bugs">🟠 Bugs</a>
+    <a href="#mantenibilidad">🔵 Mantenibilidad</a>
+    <a href="#arquitectura">🟢 Arquitectura</a>
+    <div class="nav-section">Documentos</div>
+    <a href="#feedback">Feedback</a>
+    <a href="#adr">ADRs</a>
+  </nav>
+
+  <main>
+
+    <!-- RESUMEN -->
+    <section id="resumen">
+      <div class="section-title">
+        <span class="section-icon" style="background:rgba(245,166,35,0.15)">📋</span>
+        Resumen Ejecutivo
+      </div>
+
+      <div class="summary-box">
+        <p>El proyecto es un sistema de autenticación en <strong>PHP 8.3 + MySQL</strong> con flujo de registro, login, dashboard y logout. El código demuestra un nivel intermedio-avanzado: usa PDO con prepared statements, CSRF tokens, bcrypt con cost 12, y separación básica de responsabilidades en carpetas. Sin embargo, presenta <strong>vulnerabilidades de seguridad críticas</strong> que deben corregirse antes de cualquier despliegue.</p>
+        <p>El refactoring debe priorizar: (1) corrección de la sesión post-login, (2) eliminación del anti-patrón de sanitización en entrada, (3) separación MVC, (4) manejo de race conditions.</p>
+      </div>
+
+      <div class="score-grid">
+        <div class="score-card">
+          <div class="score-val c-orange">5.5</div>
+          <div class="score-label">Seguridad</div>
+          <div class="score-bar"><div class="score-fill bg-orange" style="width:55%"></div></div>
+        </div>
+        <div class="score-card">
+          <div class="score-val c-blue">6.5</div>
+          <div class="score-label">Mantenibilidad</div>
+          <div class="score-bar"><div class="score-fill bg-blue" style="width:65%"></div></div>
+        </div>
+        <div class="score-card">
+          <div class="score-val c-orange">5.0</div>
+          <div class="score-label">Arquitectura</div>
+          <div class="score-bar"><div class="score-fill bg-orange" style="width:50%"></div></div>
+        </div>
+        <div class="score-card">
+          <div class="score-val c-green">7.0</div>
+          <div class="score-label">Código Limpio</div>
+          <div class="score-bar"><div class="score-fill bg-green" style="width:70%"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MÉTRICAS -->
+    <section id="metricas">
+      <div class="section-title">
+        <span class="section-icon" style="background:rgba(91,141,238,0.15)">📊</span>
+        Métricas de Calidad
+      </div>
+
+      <table class="metric-table">
+        <thead>
+          <tr>
+            <th>Métrica</th>
+            <th>Archivo / Función</th>
+            <th>Valor</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Complejidad Ciclomática</td>
+            <td class="mono">registro.php</td>
+            <td class="mono">8</td>
+            <td><span class="pill pill-orange">Moderada</span></td>
+          </tr>
+          <tr>
+            <td>Complejidad Ciclomática</td>
+            <td class="mono">login.php</td>
+            <td class="mono">5</td>
+            <td><span class="pill pill-green">Aceptable</span></td>
+          </tr>
+          <tr>
+            <td>Acoplamiento (fanout)</td>
+            <td class="mono">login.php / registro.php</td>
+            <td class="mono">3 includes</td>
+            <td><span class="pill pill-green">Bajo</span></td>
+          </tr>
+          <tr>
+            <td>Cohesión</td>
+            <td class="mono">funciones.php</td>
+            <td>Baja – mezcla validación, CSRF y render HTML</td>
+            <td><span class="pill pill-orange">Mejorable</span></td>
+          </tr>
+          <tr>
+            <td>Cobertura de Tests</td>
+            <td class="mono">Proyecto completo</td>
+            <td class="mono">0%</td>
+            <td><span class="pill pill-red">Crítica</span></td>
+          </tr>
+          <tr>
+            <td>Duplicación de código</td>
+            <td class="mono">login.php / registro.php</td>
+            <td>Cabeceras HTML repetidas (~15 líneas c/u)</td>
+            <td><span class="pill pill-orange">Mejorable</span></td>
+          </tr>
+          <tr>
+            <td>Longitud de función (máx)</td>
+            <td class="mono">registro.php (lógica)</td>
+            <td class="mono">~30 líneas</td>
+            <td><span class="pill pill-green">Aceptable</span></td>
+          </tr>
+          <tr>
+            <td>Manejo de errores</td>
+            <td class="mono">bd.php, login.php</td>
+            <td>Parcial — catch genérico, sin jerarquía</td>
+            <td><span class="pill pill-orange">Mejorable</span></td>
+          </tr>
+          <tr>
+            <td>Inyección SQL</td>
+            <td class="mono">Todas las queries</td>
+            <td>Prepared statements ✓</td>
+            <td><span class="pill pill-green">Seguro</span></td>
+          </tr>
+          <tr>
+            <td>XSS en output</td>
+            <td class="mono">dashboard.php, index.php</td>
+            <td>htmlspecialchars() en salida ✓</td>
+            <td><span class="pill pill-green">Seguro</span></td>
+          </tr>
+          <tr>
+            <td>Credenciales en código</td>
+            <td class="mono">bd.php</td>
+            <td>Fallback root/empty — peligroso</td>
+            <td><span class="pill pill-red">Crítico</span></td>
+          </tr>
+          <tr>
+            <td>Session Fixation</td>
+            <td class="mono">login.php, registro.php</td>
+            <td>session_regenerate_id() ausente</td>
+            <td><span class="pill pill-red">Crítico</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- SEGURIDAD -->
+    <section id="seguridad">
+      <div class="section-title">
+        <span class="section-icon" style="background:rgba(232,64,64,0.15)">🔴</span>
+        Hallazgos de Seguridad
+      </div>
+
+      <!-- F1 -->
+      <div class="finding open">
+        <div class="finding-header" onclick="toggleFinding(this)">
+          <span class="severity sev-critical">Crítico</span>
+          <div>
+            <div class="finding-title">Session Fixation — falta session_regenerate_id()</div>
+            <div class="finding-file">login.php · registro.php</div>
+          </div>
+          <span class="finding-toggle">▾</span>
+        </div>
+        <div class="finding-body">
+          <p>Tras un login exitoso, el ID de sesión no se regenera. Un atacante que obtenga el ID de sesión antes del login (p.ej. via XSS, red compartida o cookie injection) puede secuestrar la sesión autenticada del usuario.</p>
+          <div class="code-block">
+            <div class="code-label bad">❌ login.php actual — línea ~30</div>
+            <pre><span class="hl-muted">// Después del login exitoso:</span>
+$_SESSION['usuario_id']     = $user['id'];
+$_SESSION['usuario_nombre'] = $user['nombre'];
+<span class="hl-muted">// ⚠️  El session ID no cambia — misma sesión pre y post-login</span>
+header("Location: dashboard.php");
+exit;</pre>
+          </div>
+          <div class="code-block">
+            <div class="code-label good">✅ Corrección</div>
+            <pre><span class="hl-green">session_regenerate_id(true);</span> <span class="hl-muted">// true = borrar sesión anterior</span>
+$_SESSION['usuario_id']     = $user['id'];
+$_SESSION['usuario_nombre'] = $user['nombre'];
+header("Location: dashboard.php");
+exit;</pre>
+          </div>
+          <span class="fix-tag">✅ Fix: 1 línea en login.php y registro.php</span>
+        </div>
+      </div>
+
+      <!-- F2 -->
+      <div class="finding">
+        <div class="finding-header" onclick="toggleFinding(this)">
+          <span class="severity sev-critical">Crítico</span>
+          <div>
+            <div class="finding-title">Sanitización de datos en entrada (anti-patrón)</div>
+            <div class="finding-file">includes/funciones.php · obtenerPost()</div>
+          </div>
+          <span class="finding-toggle">▾</span>
+        </div>
+        <div class="finding-body">
+          <p><code>obtenerPost()</code> aplica <code>htmlspecialchars()</code> y <code>strip_tags()</code> a los valores POST antes de almacenarlos. Esto corrompe datos legítimos (p.ej. nombre <strong>O'Brien</strong> → <strong>O&#39;Brien</strong> en DB) y genera doble-escape al mostrarlos. La sanitización debe ocurrir <em>en la salida</em>, no en la entrada.</p>
+          <div class="code-block">
+            <div class="code-label bad">❌ Problema</div>
+            <pre><span class="hl-purple">function</span> <span class="hl-blue">obtenerPost</span>(<span class="hl-orange">string</span> $campo): <span class="hl-orange">string</span>
+{
+    <span class="hl-red">// htmlspecialchars en entrada → datos corruptos en BD</span>
+    <span class="hl-purple">return</span> isset($_POST[$campo])
+        ? <span class="hl-blue">htmlspecialchars</span>(<span class="hl-blue">trim</span>(<span class="hl-blue">strip_tags</span>($_POST[$campo])), ENT_QUOTES, 'UTF-8')
+        : '';
+}</pre>
+          </div>
+          <div class="code-block">
+            <div class="code-label good">✅ Corrección — limpia sin escapar para HTML</div>
+            <pre><span class="hl-purple">function</span> <span class="hl-blue">obtenerPost</span>(<span class="hl-orange">string</span> $campo): <span class="hl-orange">string</span>
+{
+    <span class="hl-green">// Solo trim + strip_tags; htmlspecialchars va al RENDERIZAR, no aquí</span>
+    <span class="hl-purple">return</span> isset($_POST[$campo])
+        ? <span class="hl-blue">trim</span>(<span class="hl-blue">strip_tags</span>($_POST[$campo]))
+        : '';
+}</pre>
+          </div>
+          <span class="fix-tag">✅ Fix: modificar obtenerPost() — 2 líneas</span>
+        </div>
+      </div>
+
+      <!-- F3 -->
+      <div class="finding">
+        <div class="finding-header" onclick="toggleFinding(this)">
+          <span class="severity sev-high">Alto</span>
+          <div>
+            <div class="finding-title">Credenciales por defecto en código (root / sin contraseña)</div>
+            <div class="finding-file">includes/bd.php</div>
+          </div>
+          <span class="finding-toggle">▾</span>
+        </div>
+        <div class="finding-body">
+          <p>Si el archivo <code>.env</code> no existe, el sistema usa <code>root</code> sin contraseña. Cualquier exposición accidental del fuente (GitHub, logs) revela credenciales de acceso a la DB. Además, no se valida que las constantes definidas tengan valores no vacíos.</p>
+          <div class="code-block">
+            <div class="code-label bad">❌ Fallbacks peligrosos</div>
+            <pre>define('DB_USER', defined('DB_USER') ? DB_USER : <span class="hl-red">'root'</span>);
+define('DB_PASS', defined('DB_PASS') ? DB_PASS : <span class="hl-red">''</span>);</pre>
+          </div>
+          <div class="code-block">
+            <div class="code-label good">✅ Forzar .env en producción</div>
+            <pre><span class="hl-purple">if</span> (!<span class="hl-blue">file_exists</span>(__DIR__ . '/../.env')) {
+    <span class="hl-green">// En producción: fallar rápido si no hay .env</span>
+    <span class="hl-blue">error_log</span>('Archivo .env no encontrado');
+    <span class="hl-blue">http_response_code</span>(503);
+    <span class="hl-blue">die</span>('Error de configuración del servidor.');
+}</pre>
+          </div>
+          <span class="fix-tag">✅ Fix: añadir .env.example + validación de entorno</span>
+        </div>
+      </div>
+
+      <!-- F4 -->
+      <div class="finding">
+        <div class="finding-header" onclick="toggleFinding(this)">
+          <span class="severity sev-high">Alto</span>
+          <div>
+            <div class="finding-title">Logout incompleto — cookie de sesión persiste</div>
+            <div class="finding-file">public/logout.php</div>
+          </div>
+          <span class="finding-toggle">▾</span>
+        </div>
+        <div class="finding-body">
+          <p><code>session_destroy()</code> elimina los datos en servidor pero el cliente conserva la cookie con el ID. Si hay un breve window de re-uso del ID (p.ej. antes de que expire el garbage collector), la sesión puede reutilizarse. También falta <code>session_unset()</code>.</p>
+          <div class="code-block">
+            <div class="code-label bad">❌ logout.php actual</div>
+            <pre>session_start();
+<span class="hl-red">session_destroy();</span>  <span class="hl-muted">// Cookie persiste en cliente</span>
+header("Location: index.php");
+exit;</pre>
+          </div>
+          <div class="code-block">
+            <div class="code-label good">✅ Logout robusto</div>
+            <pre>session_start();
+<span class="hl-green">session_unset();</span>
+<span class="hl-green">session_destroy();</span>
+<span class="hl-green">// Eliminar cookie del navegador</span>
+<span class="hl-blue">setcookie</span>(session_name(), '', time() - 3600, '/', '', <span class="hl-green">true</span>, <span class="hl-green">true</span>);
+header("Location: index.php");
+exit;</pre>
+          </div>
+          <span class="fix-tag">✅ Fix: 2 líneas adicionales en logout.php</span>
+        </div>
+      </div>
+
+      <!-- F5 -->
+      <div class="finding">
+        <div class="finding-header" onclick="toggleFinding(this)">
+          <span class="severity sev-medium">Medio</span>
+          <div>
+            <div class="finding-title">Sin protección contra fuerza bruta en login</div>
+            <div class="finding-file">public/login.php</div>
+          </div>
+          <span class="finding-toggle">▾</span>
+        </div>
+        <div class="finding-body">
+          <p>No existe rate limiting, captcha, ni bloqueo por intentos fallidos. Un atacante puede realizar ataques de diccionario de forma ilimitada contra cualquier email conocido.</p>
+          <p><strong>Recomendación mínima para refactoring:</strong> registrar intentos fallidos en DB (tabla <code>login_attempts</code>) y bloquear IP/email por N minutos tras X fallos. Alternativa rápida: integrar reCAPTCHA v3 en el formulario.</p>
+        </div>
+      </div>
+
+      <!-- F6 -->
+      <div class="finding">
+        <div class="finding-header" onclick="toggleFinding(this)">
+          <span class="severity sev-medium">Medio</span>
+          <div>
+            <div class="finding-title">Sin directivas de seguridad HTTP (headers)</div>
+            <div class="finding-file">Proyecto completo — falta .htaccess</div>
+          </div>
+          <span class="finding-toggle">▾</span>
+        </div>
+        <div class="finding-body">
+          <p>Faltan headers de seguridad que los navegadores modernos respetan para mitigar ataques:</p>
+          <div class="code-block">
+            <div class="code-label good">✅ .htaccess recomendado</div>
+            <pre>Header set X-Content-Type-Options "nosniff"
+Header set X-Frame-Options "DENY"
+Header set Referrer-Policy "strict-origin-when-cross-origin"
+Header set Content-Security-Policy "default-src 'self'; style-src 'self' fonts.googleapis.com"
+
+<span class="hl-muted"># Proteger directorio includes/</span>
+&lt;Directory "includes"&gt;
+    Require all denied
+&lt;/Directory&gt;</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BUGS -->
+    <section id="bugs">
+      <div class="section-title">
+        <span class="section-icon" style="background:rgba(245,166,35,0.15)">🐛</span>
+        Bugs Funcionales
+      </div>
+
+      <div class="finding open">
+        <div class="finding-header" onclick="toggleFinding(this)">
+          <span class="severity sev-high">Alto</span>
+          <div>
+            <div class="finding-title">session_start() llamado DESPUÉS de require_once</div>
+            <div class="finding-file">public/dashboard.php — línea 2 vs 3</div>
+          </div>
+          <span class="finding-toggle">▾</span>
+        </div>
+        <div class="finding-body">
+          <p><code>funciones.php</code> se carga antes de <code>session_start()</code>. Si en el futuro funciones.php accede a <code>$_SESSION</code>, el orden incorrecto generará errores silenciosos o warnings. El estándar es iniciar la sesión lo primero.</p>
+          <div class="code-block">
+            <div class="code-label bad">❌ Orden actual en dashboard.php</div>
+            <pre>require_once __DIR__ . '/../includes/<span class="hl-red">funciones.php</span>';
+<span class="hl-red">session_start();</span>  <span class="hl-muted">// ← debería ir primero</span></pre>
+          </div>
+          <div class="code-block">
+            <div class="code-label good">✅ Orden correcto</div>
+            <pre><span class="hl-green">session_start();</span>  <span class="hl-muted">// ← siempre lo primero</span>
+require_once __DIR__ . '/../includes/funciones.php';</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="finding">
+        <div class="finding-header" onclick="toggleFinding(this)">
+          <span class="severity sev-high">Alto</span>
+          <div>
+            <div class="finding-title">Flash de bienvenida nunca se muestra en Dashboard</div>
+            <div class="finding-file">public/login.php → public/dashboard.php</div>
+          </div>
+          <span class="finding-toggle">▾</span>
+        </div>
+        <div class="finding-body">
+          <p>Tras login exitoso, <code>login.php</code> llama a <code>flash('success', "¡Bienvenido...")</code> y redirige a <code>dashboard.php</code>. Pero <code>dashboard.php</code> nunca llama a <code>mostrarFlash()</code> — el mensaje se guarda en sesión y nunca se renderiza.</p>
+          <div class="code-block">
+            <div class="code-label good">✅ Añadir en dashboard.php</div>
+            <pre>require_once __DIR__ . '/../includes/flash.php';
+<span class="hl-muted">// ...en el HTML:</span>
+<span class="hl-green">&lt;?php mostrarFlash(); ?&gt;</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="finding">
+        <div class="finding-header" onclick="toggleFinding(this)">
+          <span class="severity sev-medium">Medio</span>
+          <div>
+            <div class="finding-title">Race condition en verificación de email único</div>
+            <div class="finding-file">public/registro.php</div>
+          </div>
+          <span class="finding-toggle">▾</span>
+        </div>
+        <div class="finding-body">
+          <p>El flujo actual hace un <code>SELECT</code> para verificar duplicado y luego un <code>INSERT</code>. Dos requests concurrentes con el mismo email pueden pasar ambos el SELECT y causar un duplicado (violando la constraint UNIQUE de la DB, lo que lanza una excepción no manejada específicamente).</p>
+          <div class="code-block">
+            <div class="code-label good">✅ Confiar en la constraint UNIQUE y atrapar la excepción</div>
+            <pre><span class="hl-purple">try</span> {
+    $hash = <span class="hl-blue">password_hash</span>($pass, PASSWORD_DEFAULT, ['cost' => 12]);
+    $stmt = $pdo->prepare("INSERT INTO usuarios (nombre, email, contrasena_hash) VALUES (?, ?, ?)");
+    $stmt->execute([$datos['nombre'], $datos['email'], $hash]);
+    <span class="hl-green">// Éxito — sin SELECT previo</span>
+} <span class="hl-purple">catch</span> (<span class="hl-orange">PDOException</span> $e) {
+    <span class="hl-purple">if</span> ($e->getCode() === <span class="hl-green">'23000'</span>) { <span class="hl-muted">// Duplicate entry</span>
+        $errores[] = 'Ese correo ya está registrado.';
+    } <span class="hl-purple">else</span> {
+        <span class="hl-blue">error_log</span>("Error en registro: " . $e->getMessage());
+        $errores[] = 'Error al crear la cuenta. Intenta más tarde.';
+    }
+}</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="finding">
+        <div class="finding-header" onclick="toggleFinding(this)">
+          <span class="severity sev-low">Bajo</span>
+          <div>
+            <div class="finding-title">Typo en mensaje de validación de contraseña</div>
+            <div class="finding-file">includes/funciones.php · validarContrasena()</div>
+          </div>
+          <span class="finding-toggle">▾</span>
+        </div>
+        <div class="finding-body">
+          <p>El mensaje de error dice <strong>"Debe contener al mayor una letra mayúscula"</strong>. Debería ser <strong>"al menos"</strong>. Error tipográfico que llega al usuario final.</p>
+          <div class="code-block">
+            <div class="code-label bad">❌ Actual</div>
+            <pre>if (!preg_match('/[A-Z]/', $pass)) return 'Debe contener <span class="hl-red">al mayor</span> una letra mayúscula.';</pre>
+          </div>
+          <div class="code-block">
+            <div class="code-label good">✅ Correcto</div>
+            <pre>if (!preg_match('/[A-Z]/', $pass)) return 'Debe contener <span class="hl-green">al menos</span> una letra mayúscula.';</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MANTENIBILIDAD -->
+    <section id="mantenibilidad">
+      <div class="section-title">
+        <span class="section-icon" style="background:rgba(91,141,238,0.15)">🔵</span>
+        Mantenibilidad
+      </div>
+
+      <div class="finding">
+        <div class="finding-header" onclick="toggleFinding(this)">
+          <span class="severity sev-medium">Medio</span>
+          <div>
+            <div class="finding-title">funciones.php tiene baja cohesión — mezcla responsabilidades</div>
+            <div class="finding-file">includes/funciones.php</div>
+          </div>
+          <span class="finding-toggle">▾</span>
+        </div>
+        <div class="finding-body">
+          <p>Un solo archivo mezcla: validación de formularios, seguridad CSRF, sanitización de input y renderizado HTML de errores. Dificulta el testing y la reutilización.</p>
+          <p><strong>Propuesta de separación:</strong></p>
+          <div class="code-block">
+            <div class="code-label good">✅ Estructura sugerida</div>
+            <pre>includes/
+  ├── csrf.php         <span class="hl-muted">← generarTokenCSRF(), validarTokenCSRF()</span>
+  ├── validaciones.php <span class="hl-muted">← validarNombre(), validarEmail(), validarContrasena()</span>
+  ├── helpers.php      <span class="hl-muted">← obtenerPost(), mostrarErrores()</span>
+  ├── flash.php        <span class="hl-muted">← (ya separado, bien ✓)</span>
+  └── bd.php           <span class="hl-muted">← (ya separado, bien ✓)</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="finding">
+        <div class="finding-header" onclick="toggleFinding(this)">
+          <span class="severity sev-medium">Medio</span>
+          <div>
+            <div class="finding-title">Duplicación de cabeceras HTML en cada archivo público</div>
+            <div class="finding-file">public/login.php, registro.php, dashboard.php</div>
+          </div>
+          <span class="finding-toggle">▾</span>
+        </div>
+        <div class="finding-body">
+          <p>Cada página repite el mismo bloque <code>&lt;head&gt;</code> con charset, viewport, title y link CSS. Un cambio (p.ej. añadir un favicon) requiere editar N archivos.</p>
+          <div class="code-block">
+            <div class="code-label good">✅ Extraer a partials</div>
+            <pre>includes/
+  ├── partials/
+  │   ├── head.php    <span class="hl-muted">← &lt;!DOCTYPE&gt;...&lt;/head&gt;&lt;body&gt;</span>
+  │   └── footer.php  <span class="hl-muted">← &lt;/body&gt;&lt;/html&gt;</span>
+
+<span class="hl-muted">// En login.php:</span>
+$pageTitle = 'Iniciar Sesión';
+require_once '../includes/partials/head.php';</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="finding">
+        <div class="finding-header" onclick="toggleFinding(this)">
+          <span class="severity sev-low">Info</span>
+          <div>
+            <div class="finding-title">Sin composer.json ni autoloading</div>
+            <div class="finding-file">Proyecto completo</div>
+          </div>
+          <span class="finding-toggle">▾</span>
+        </div>
+        <div class="finding-body">
+          <p>Los <code>require_once</code> manuales son frágiles. Agregar Composer permite autoloading PSR-4 y facilita incorporar librerías (rate limiting, logging, etc.) en el futuro.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ARQUITECTURA -->
+    <section id="arquitectura">
+      <div class="section-title">
+        <span class="section-icon" style="background:rgba(62,207,142,0.15)">🏗️</span>
+        Arquitectura
+      </div>
+
+      <div class="finding">
+        <div class="finding-header" onclick="toggleFinding(this)">
+          <span class="severity sev-high">Alto</span>
+          <div>
+            <div class="finding-title">Sin separación de lógica y presentación (0% MVC)</div>
+            <div class="finding-file">Todos los archivos public/</div>
+          </div>
+          <span class="finding-toggle">▾</span>
+        </div>
+        <div class="finding-body">
+          <p>Login, validación, DB y renderizado HTML conviven en el mismo archivo PHP. Cualquier cambio en el flujo de negocio requiere navegar código HTML, y viceversa.</p>
+          <div class="code-block">
+            <div class="code-label good">✅ Arquitectura mínima viable sugerida</div>
+            <pre>proyecto/
+  ├── public/          <span class="hl-muted">← entry points (solo routing + include)</span>
+  │   ├── index.php
+  │   ├── login.php    <span class="hl-muted">← llama a AuthController::login()</span>
+  │   └── ...
+  ├── src/
+  │   ├── Controllers/
+  │   │   └── AuthController.php  <span class="hl-muted">← lógica de negocio</span>
+  │   ├── Models/
+  │   │   └── Usuario.php         <span class="hl-muted">← queries a DB</span>
+  │   └── Views/
+  │       ├── login.php           <span class="hl-muted">← solo HTML + vars</span>
+  │       └── registro.php
+  ├── includes/        <span class="hl-muted">← helpers y config</span>
+  └── .env</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="finding">
+        <div class="finding-header" onclick="toggleFinding(this)">
+          <span class="severity sev-high">Alto</span>
+          <div>
+            <div class="finding-title">Sin capa de tests — 0% cobertura</div>
+            <div class="finding-file">Proyecto completo</div>
+          </div>
+          <span class="finding-toggle">▾</span>
+        </div>
+        <div class="finding-body">
+          <p>No existe ningún test unitario ni de integración. Las funciones de validación en <code>funciones.php</code> son ideales para comenzar con PHPUnit — son puras (sin efectos secundarios) y fáciles de testear.</p>
+          <div class="code-block">
+            <div class="code-label good">✅ Ejemplo test PHPUnit para validarContrasena()</div>
+            <pre><span class="hl-purple">class</span> <span class="hl-blue">ValidacionesTest</span> <span class="hl-purple">extends</span> TestCase {
+    <span class="hl-purple">public function</span> <span class="hl-blue">testContrasenaCorta</span>(): <span class="hl-orange">void</span> {
+        $this->assertSame('Mínimo 8 caracteres.', <span class="hl-blue">validarContrasena</span>('Ab1'));
+    }
+    <span class="hl-purple">public function</span> <span class="hl-blue">testContrasenaValida</span>(): <span class="hl-orange">void</span> {
+        $this->assertNull(<span class="hl-blue">validarContrasena</span>('Segura123'));
+    }
+}</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="finding">
+        <div class="finding-header" onclick="toggleFinding(this)">
+          <span class="severity sev-medium">Medio</span>
+          <div>
+            <div class="finding-title">Sin flujos esenciales: reset de contraseña, verificación de email</div>
+            <div class="finding-file">Arquitectura general</div>
+          </div>
+          <span class="finding-toggle">▾</span>
+        </div>
+        <div class="finding-body">
+          <p>Un sistema de autenticación en producción necesita: reset de contraseña por email con token temporal, y opcionalmente verificación del email en el registro. Sin estos flujos el sistema no es usable en un contexto real.</p>
+          <p><strong>Mínimo para producción:</strong> tabla <code>password_resets(email, token, expires_at)</code> + envío de mail con <code>PHPMailer</code> o <code>symfony/mailer</code>.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEEDBACK -->
+    <section id="feedback">
+      <div class="section-title">
+        <span class="section-icon" style="background:rgba(245,166,35,0.15)">💬</span>
+        Feedback General
+      </div>
+
+      <div class="fb-item">
+        <div class="fb-icon">👍</div>
+        <div class="fb-content">
+          <h4>Lo que está bien — no romper en el refactoring</h4>
+          <p>PDO con prepared statements y <code>ATTR_EMULATE_PREPARES = false</code> protegen correctamente contra SQL injection. bcrypt con cost 12 es una buena elección. CSRF tokens con <code>random_bytes(32)</code> es sólido. <code>htmlspecialchars()</code> en output protege contra XSS. La estructura básica de carpetas es coherente.</p>
+        </div>
+      </div>
+
+      <div class="fb-item">
+        <div class="fb-icon">⚠️</div>
+        <div class="fb-content">
+          <h4>Prioridad inmediata (antes de cualquier deploy)</h4>
+          <p>1) Agregar <code>session_regenerate_id(true)</code> post-login. 2) Corregir <code>logout.php</code> para eliminar la cookie. 3) Corregir el orden <code>session_start()</code> en dashboard.php. 4) Eliminar <code>htmlspecialchars()</code> de <code>obtenerPost()</code>. 5) Reemplazar credenciales hardcodeadas con validación estricta de <code>.env</code>.</p>
+        </div>
+      </div>
+
+      <div class="fb-item">
+        <div class="fb-icon">🗺️</div>
+        <div class="fb-content">
+          <h4>Hoja de ruta del refactoring (orden sugerido)</h4>
+          <p><strong>Sprint 1:</strong> fixes de seguridad críticos (listados arriba) + typo + flash en dashboard.<br>
+          <strong>Sprint 2:</strong> separar funciones.php en 3 archivos + extraer partials HTML + agregar .htaccess.<br>
+          <strong>Sprint 3:</strong> implementar MVC básico + Composer + primeros tests PHPUnit.<br>
+          <strong>Sprint 4:</strong> rate limiting + reset de contraseña + verificación de email.</p>
+        </div>
+      </div>
+
+      <div class="fb-item">
+        <div class="fb-icon">🎯</div>
+        <div class="fb-content">
+          <h4>Nivel general del código</h4>
+          <p>El código es claramente mejor que un tutorial básico — hay intención de aplicar buenas prácticas. Los problemas son de madurez y de detalles de implementación, no de base. Con el refactoring propuesto, el proyecto puede alcanzar un nivel sólido de producción.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ADR -->
+    <section id="adr">
+      <div class="section-title">
+        <span class="section-icon" style="background:rgba(91,141,238,0.15)">📋</span>
+        Architecture Decision Records (ADR)
+      </div>
+      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1.5rem;">Documentan las decisiones arquitectónicas actuales y propuestas para el refactoring.</p>
+
+      <!-- ADR-001 -->
+      <div class="adr-card accepted">
+        <div class="adr-header">
+          <span class="adr-id">ADR-001</span>
+          <span class="adr-title">Uso de PDO con prepared statements para acceso a DB</span>
+          <span class="adr-status status-accepted">Aceptado</span>
+        </div>
+        <div class="adr-meta">
+          <div><strong>Fecha</strong>Mar 2026</div>
+          <div><strong>Contexto</strong>Acceso a MySQL desde PHP</div>
+          <div><strong>Impacto</strong>Alto</div>
+          <div><strong>Revisión</strong>No necesaria</div>
+        </div>
+        <hr class="adr-divider">
+        <div class="adr-body">
+          <p><strong>Contexto:</strong> El sistema necesita consultar y escribir en MySQL. PHP ofrece mysqli nativo, PDO, y ORMs.</p>
+          <p><strong>Decisión:</strong> Se usa PDO con prepared statements reales (<code>ATTR_EMULATE_PREPARES = false</code>) y <code>FETCH_ASSOC</code> como modo por defecto.</p>
+          <p><strong>Consecuencias positivas:</strong></p>
+          <ul>
+            <li>Prevención completa de SQL injection sin esfuerzo adicional</li>
+            <li>API portátil (cambia el driver, no el código)</li>
+            <li>Manejo de errores vía excepciones (<code>ERRMODE_EXCEPTION</code>)</li>
+          </ul>
+          <p><strong>Consecuencias negativas:</strong> Sin capa Model, las queries están dispersas en los controladores.</p>
+        </div>
+      </div>
+
+      <!-- ADR-002 -->
+      <div class="adr-card accepted">
+        <div class="adr-header">
+          <span class="adr-id">ADR-002</span>
+          <span class="adr-title">bcrypt (PASSWORD_DEFAULT) con cost 12 para contraseñas</span>
+          <span class="adr-status status-accepted">Aceptado</span>
+        </div>
+        <div class="adr-meta">
+          <div><strong>Fecha</strong>Mar 2026</div>
+          <div><strong>Contexto</strong>Almacenamiento de contraseñas</div>
+          <div><strong>Impacto</strong>Crítico</div>
+          <div><strong>Revisión</strong>Anual (ajustar cost)</div>
+        </div>
+        <hr class="adr-divider">
+        <div class="adr-body">
+          <p><strong>Decisión:</strong> <code>password_hash($pass, PASSWORD_DEFAULT, ['cost' => 12])</code> con límite de 72 chars (límite de bcrypt).</p>
+          <p><strong>Alternativas consideradas:</strong> Argon2id (más moderno) — descartado para mantener compatibilidad con PHP 7.x. En PHP 8.3 podría migrarse a Argon2id en el futuro.</p>
+          <ul>
+            <li>Cost 12 = ~250ms por hash en hardware moderno — aceptable para UX y resistente a GPU cracking</li>
+            <li>PASSWORD_DEFAULT garantiza upgrade automático si PHP cambia el algoritmo</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- ADR-003 -->
+      <div class="adr-card proposed">
+        <div class="adr-header">
+          <span class="adr-id">ADR-003</span>
+          <span class="adr-title">Adoptar arquitectura MVC mínima en el refactoring</span>
+          <span class="adr-status status-proposed">Propuesto</span>
+        </div>
+        <div class="adr-meta">
+          <div><strong>Fecha</strong>Mar 2026</div>
+          <div><strong>Contexto</strong>Refactoring del proyecto</div>
+          <div><strong>Impacto</strong>Alto</div>
+          <div><strong>Decisor</strong>Equipo de desarrollo</div>
+        </div>
+        <hr class="adr-divider">
+        <div class="adr-body">
+          <p><strong>Contexto:</strong> Actualmente la lógica de negocio, el acceso a DB y el HTML están en los mismos archivos, dificultando el testing y la evolución del código.</p>
+          <p><strong>Decisión propuesta:</strong> Separar en <code>Controllers/</code> (lógica), <code>Models/</code> (DB) y <code>Views/</code> (HTML). Sin framework externo — MVC "casero" con Composer + PSR-4.</p>
+          <p><strong>Opciones evaluadas:</strong></p>
+          <ul>
+            <li><strong>Micro-framework (Slim, Laravel):</strong> mayor curva de aprendizaje, overhead para proyecto pequeño</li>
+            <li><strong>MVC manual con Composer:</strong> ✅ elegido — control total, sin dependencias pesadas</li>
+            <li><strong>Mantener estructura actual:</strong> deuda técnica creciente, dificulta testing</li>
+          </ul>
+          <p><strong>Consecuencias:</strong> Refactoring de 2-3 sprints. Permite agregar tests unitarios desde el Sprint 3.</p>
+        </div>
+      </div>
+
+      <!-- ADR-004 -->
+      <div class="adr-card proposed">
+        <div class="adr-header">
+          <span class="adr-id">ADR-004</span>
+          <span class="adr-title">Sanitización en salida, no en entrada (output encoding)</span>
+          <span class="adr-status status-proposed">Propuesto</span>
+        </div>
+        <div class="adr-meta">
+          <div><strong>Fecha</strong>Mar 2026</div>
+          <div><strong>Contexto</strong>Corrección de anti-patrón en obtenerPost()</div>
+          <div><strong>Impacto</strong>Medio-Alto</div>
+          <div><strong>Urgencia</strong>Sprint 1</div>
+        </div>
+        <hr class="adr-divider">
+        <div class="adr-body">
+          <p><strong>Contexto:</strong> <code>obtenerPost()</code> actualmente aplica <code>htmlspecialchars()</code> a los datos antes de guardarlos en DB — corrompe datos con caracteres especiales y crea doble-escape en el output.</p>
+          <p><strong>Decisión:</strong> Adoptar el principio OWASP de "sanitize on output": los datos se guardan en DB tal como vienen (tras trim y strip_tags); <code>htmlspecialchars()</code> se aplica solo al momento de renderizar en HTML.</p>
+          <ul>
+            <li>Los datos en DB son fieles a lo que el usuario ingresó</li>
+            <li>El encoding correcto depende del contexto de salida (HTML, JSON, CSV — cada uno tiene su escape)</li>
+            <li>Elimina bugs de doble-escape silenciosos</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- ADR-005 -->
+      <div class="adr-card proposed">
+        <div class="adr-header">
+          <span class="adr-id">ADR-005</span>
+          <span class="adr-title">Gestión de configuración exclusivamente via .env</span>
+          <span class="adr-status status-proposed">Propuesto</span>
+        </div>
+        <div class="adr-meta">
+          <div><strong>Fecha</strong>Mar 2026</div>
+          <div><strong>Contexto</strong>Credenciales y configuración de entornos</div>
+          <div><strong>Impacto</strong>Crítico</div>
+          <div><strong>Urgencia</strong>Sprint 1</div>
+        </div>
+        <hr class="adr-divider">
+        <div class="adr-body">
+          <p><strong>Decisión:</strong> Eliminar todos los valores por defecto de credenciales en <code>bd.php</code>. El sistema debe fallar explícitamente si <code>.env</code> no existe en producción. Agregar <code>.env.example</code> al repositorio y <code>.env</code> al <code>.gitignore</code>.</p>
+          <ul>
+            <li>Seguir el principio 12-Factor App (config en entorno, no en código)</li>
+            <li>Previene exposición accidental de credenciales en VCS</li>
+            <li>Facilita el manejo de múltiples entornos (dev/staging/prod)</li>
+          </ul>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+</div>
+
+<script>
+function toggleFinding(header) {
+  const card = header.closest('.finding');
+  card.classList.toggle('open');
+}
+// Auto-open first of each section
+document.querySelectorAll('section').forEach(sec => {
+  const first = sec.querySelector('.finding');
+  if (first && !first.classList.contains('open')) {
+    // leave as is
+  }
+});
+</script>
+</body>
+</html>
